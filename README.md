@@ -1,4 +1,4 @@
-# PowerShell & AI Tools Collection
+# Vibecoded PowerShell Tools Collection
 
 A curated collection of PowerShell utilities for Windows power users and system administrators, co-authored in collaboration with AI assistants.
 
