@@ -1,0 +1,28 @@
+name: PowerShell Linter
+
+# Trigger the workflow on pushes and pull requests to the main branch
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  lint:
+    name: Run PSScriptAnalyzer
+    # Ubuntu runners are faster and cheaper than Windows, and PowerShell runs natively on Linux
+    runs-on: ubuntu-latest 
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Lint PowerShell scripts
+        shell: pwsh
+        run: |
+          # Install the linter module from the PowerShell Gallery
+          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+          
+          # Run the linter against the specific file (or use '.' for the whole repo)
+          # -EnableExit tells the linter to fail the GitHub Action if it finds any warnings or errors
+          Invoke-ScriptAnalyzer -Path .\Update-NvidiaStudio.ps1 -EnableExit
