@@ -22,9 +22,9 @@
 # Requires -Version 5.1
 $ErrorActionPreference = "Stop"
 
-Write-Host "====================================================" -ForegroundColor Direct
+Write-Host "====================================================" -ForegroundColor DarkGray
 Write-Host "    PEARAI + OLLAMA LOCAL ENVIRONMENT SETUP        " -ForegroundColor Cyan
-Write-Host "====================================================" -ForegroundColor Direct
+Write-Host "====================================================" -ForegroundColor DarkGray
 Write-Host ""
 
 Write-Host "[1/5] Installing Ollama and PearAI..." -ForegroundColor Cyan
