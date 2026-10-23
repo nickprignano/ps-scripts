@@ -1,24 +1,46 @@
 # ==============================================================================
-# Script: AutoUpdate-NvidiaStudioDriver.ps1
+# Script: Update-NvidiaStudioDrivers.ps1
 # Description: Checks current NVIDIA driver version and updates to the latest
-#              NVIDIA Studio Driver (CRD).
+#              NVIDIA Studio Driver (CRD). Automatically detects Desktop vs Laptop.
 # ==============================================================================
 
 # --- CONFIGURATION ---
-$DryRun = $true  # Change this to $false to actually download and install the driver
+$DryRun = $true  
 # ---------------------
 
-# 1. Get currently installed NVIDIA driver version
+# 1. Determine System Form Factor (Desktop vs Laptop)
+$systemType = (Get-CimInstance -ClassName Win32_ComputerSystem).PCSystemType
+$isLaptop = ($systemType -eq 2)
+
+if ($isLaptop) {
+    Write-Host "System Form Factor: Laptop detected." -ForegroundColor Cyan
+    # psid=121 (Notebooks), isWHQL=1 (Studio Drivers must be WHQL)
+    $apiUrl = "https://gfwsl.geforce.com/services_toolkit/services/com/nvidia/services/AjaxDriverService.php?func=DriverManualLookup&psid=121&pfid=883&osID=57&languageCode=1033&beta=0&isWHQL=1&dltype=-1&dch=1&upCRD=1&numberOfResults=1"
+} else {
+    Write-Host "System Form Factor: Desktop detected." -ForegroundColor Cyan
+    # psid=120 (Desktops), isWHQL=1 (Studio Drivers must be WHQL)
+    $apiUrl = "https://gfwsl.geforce.com/services_toolkit/services/com/nvidia/services/AjaxDriverService.php?func=DriverManualLookup&psid=120&pfid=958&osID=57&languageCode=1033&beta=0&isWHQL=1&dltype=-1&dch=1&upCRD=1&numberOfResults=1"
+}
+
+# 2. Get currently installed NVIDIA driver version
 $installedDriver = Get-CimInstance -ClassName Win32_PnPSignedDriver | 
     Where-Object { $_.DeviceName -match "NVIDIA GeForce|NVIDIA RTX|NVIDIA Quadro" } | 
     Select-Object -First 1
 
 if ($installedDriver) {
-    # Convert Windows version format (e.g., 32.0.15.5585) to standard NVIDIA format (e.g., 555.85)
     $localVersionRaw = $installedDriver.DriverVersion
-    $localVersionStr = ($localVersionRaw -replace '\.', '')[-5..-1] -join ''
-    $localVersionStr = $localVersionStr.Insert(3, '.')
-    $localVersion = [version]$localVersionStr
+    try {
+        $localVersionStr = ($localVersionRaw -replace '\.', '')[-5..-1] -join ''
+        $localVersionStr = $localVersionStr.Insert(3, '.')
+        $localVersion = [version]$localVersionStr
+        
+        # Fix for OEM laptop drivers yielding artificially high version numbers
+        if ($localVersion.Major -gt 600) {
+            $localVersion = [version]"0.0.0.0"
+        }
+    } catch {
+        $localVersion = [version]"0.0.0.0"
+    }
     Write-Host "Current NVIDIA GPU: $($installedDriver.DeviceName)" -ForegroundColor Cyan
     Write-Host "Current Studio Driver Version: $localVersion" -ForegroundColor Cyan
 } else {
@@ -26,11 +48,7 @@ if ($installedDriver) {
     $localVersion = [version]"0.0.0.0"
 }
 
-# 2. Fetch the latest Studio Driver version from NVIDIA's API
-# psid=120 and pfid=958 represent generic modern RTX Desktop architecture (DCH unified drivers)
-# upCRD=1 enforces fetching the Studio Driver (Creator Ready Driver)
-$apiUrl = "https://gfwsl.geforce.com/services_toolkit/services/com/nvidia/services/AjaxDriverService.php?func=DriverManualLookup&psid=120&pfid=958&osID=57&languageCode=1033&beta=0&isWHQL=0&dltype=-1&dch=1&upCRD=1&numberOfResults=1"
-
+# 3. Fetch the latest Studio Driver version from NVIDIA's API
 Write-Host "`nChecking NVIDIA for the latest Studio Driver..."
 try {
     $response = Invoke-RestMethod -Uri $apiUrl -UseBasicParsing
@@ -40,17 +58,22 @@ try {
     }
 
     $latestDriver = $response.IDS[0].downloadInfo
-    $latestVersion = [version]$latestDriver.Version
+    $latestVersionStr = $latestDriver.Version
+    
+    if (-not $latestVersionStr) {
+        throw "NVIDIA API returned an empty version."
+    }
+
+    $latestVersion = [version]$latestVersionStr
     $downloadUrl = $latestDriver.DownloadURL
 
     Write-Host "Latest Studio Driver Version: $latestVersion" -ForegroundColor Green
 } catch {
-    Write-Host "Failed to parse NVIDIA API. The endpoint might have changed or is temporarily unreachable." -ForegroundColor Red
-    Write-Host "Error details: $_" -ForegroundColor Red
+    Write-Host "Failed to parse NVIDIA API: $_" -ForegroundColor Red
     Exit
 }
 
-# 3. Compare versions and execute update
+# 4. Compare versions and execute update
 if ($latestVersion -gt $localVersion) {
     Write-Host "`nNew Studio Driver found! (v$latestVersion)" -ForegroundColor Yellow
     
