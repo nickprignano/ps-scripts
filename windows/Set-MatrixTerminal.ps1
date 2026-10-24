@@ -1,6 +1,7 @@
 ﻿#requires -Version 7.0
 # Configures the current user's Windows Terminal and PowerShell profile.
 # No elevation is required.
+# Windows Terminal settings are rewritten as JSON; comments and formatting are not retained.
 
 $ErrorActionPreference = 'Stop'
 

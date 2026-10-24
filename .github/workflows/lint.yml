@@ -40,4 +40,6 @@ jobs:
 
           # Install the linter module only when there are scripts to analyze.
           Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
-          Invoke-ScriptAnalyzer -Path $changedScripts -EnableExit
+          foreach ($scriptPath in $changedScripts) {
+            Invoke-ScriptAnalyzer -Path $scriptPath -EnableExit
+          }
