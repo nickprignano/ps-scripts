@@ -16,13 +16,28 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Lint PowerShell scripts
         shell: pwsh
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
-          # Install the linter module from the PowerShell Gallery
+          $ErrorActionPreference = 'Stop'
+          $base = $env:BASE_SHA
+          if ($base -match '^0+$') {
+            $base = $null | git mktree
+            if ($LASTEXITCODE -ne 0 -or -not $base) { throw 'Unable to create the empty-tree comparison base.' }
+          }
+          $changedScripts = @(git diff --name-only --diff-filter=ACMR $base $env:HEAD_SHA -- '*.ps1')
+          if ($LASTEXITCODE -ne 0) { throw 'Unable to determine changed PowerShell scripts.' }
+          if ($changedScripts.Count -eq 0) {
+            Write-Output 'No changed PowerShell scripts to lint.'
+            exit 0
+          }
+
+          # Install the linter module only when there are scripts to analyze.
           Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
-          
-          # Run the linter against the specific file (or use '.' for the whole repo)
-          # -EnableExit tells the linter to fail the GitHub Action if it finds any warnings or errors
-          Invoke-ScriptAnalyzer -Path .\Update-NvidiaStudio.ps1 -EnableExit
+          Invoke-ScriptAnalyzer -Path $changedScripts -EnableExit
