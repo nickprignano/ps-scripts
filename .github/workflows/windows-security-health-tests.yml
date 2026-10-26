@@ -1,0 +1,35 @@
+name: Windows Security Health Tests
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'windows/Test-WindowsSecurityHealth.ps1'
+      - 'windows/tests/Test-WindowsSecurityHealth.Tests.ps1'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'windows/Test-WindowsSecurityHealth.ps1'
+      - 'windows/tests/Test-WindowsSecurityHealth.Tests.ps1'
+
+jobs:
+  test:
+    name: Pester on Windows PowerShell 5.1 and PowerShell 7
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Run Pester on Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $results = Invoke-Pester -Path 'windows/tests/Test-WindowsSecurityHealth.Tests.ps1' -PassThru
+          if ($results.FailedCount -gt 0) { throw "Pester failed: $($results.FailedCount) failures" }
+
+      - name: Run Pester on PowerShell 7
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $results = Invoke-Pester -Path 'windows/tests/Test-WindowsSecurityHealth.Tests.ps1' -PassThru
+          if ($results.FailedCount -gt 0) { throw "Pester failed: $($results.FailedCount) failures" }
