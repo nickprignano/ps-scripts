@@ -294,3 +294,12 @@
   proxy article remains explicitly qualified as background only.
 - Loop closed with local, uncommitted files. No release, feedback, or follow-up
   issue exists; publication remains for the user to approve.
+
+### 2026-10-25 — Published
+
+- User requested push. Committed WUR-001 and tracking artifacts as
+  `7f000cc` and pushed `main` to `origin` (nickprignano/ps-scripts).
+- Published files: script, README, tests, spec, blueprint, session logs, and
+  build log. Security-health and unrelated tracking work was intentionally left
+  out of this commit.
+- No live Windows Update search or real repair was run during publication.
